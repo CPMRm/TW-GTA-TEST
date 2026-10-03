@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>臺北狂飆 2D - Taiwan GTA Mobile Edition</title>
+    <title>臺北狂飆 3D - Taiwan GTA Mobile 3D</title>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -17,23 +19,24 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #111;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #050505;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
         }
-        #gameCanvas {
+        #webgl-container {
             width: 100%;
             height: 100%;
-            display: block;
-            background: #222;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
         /* HUD OVERLAY */
         #hud {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 12px 16px;
+            top: 10px;
+            left: 10px;
+            right: 10px;
             pointer-events: none;
             display: flex;
             justify-content: space-between;
@@ -41,37 +44,37 @@
             z-index: 10;
         }
         .hud-card {
-            background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 8px 12px;
-            border-radius: 12px;
+            background: rgba(10, 10, 15, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 14px;
+            border-radius: 14px;
             color: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
         .hud-title {
-            font-size: 10px;
+            font-size: 11px;
             color: #fbbf24;
-            font-weight: bold;
+            font-weight: 800;
             letter-spacing: 1px;
-            text-transform: uppercase;
         }
         .hud-val {
             font-size: 18px;
             font-weight: 900;
             font-family: monospace;
+            color: #34d399;
         }
         .stars {
-            color: #e5e7eb;
+            color: #4b5563;
             font-size: 18px;
             letter-spacing: 2px;
         }
         .star-active {
             color: #f59e0b;
-            text-shadow: 0 0 6px #f59e0b;
+            text-shadow: 0 0 8px #f59e0b;
         }
 
-        /* INTERACTION PROMPT */
+        /* PROMPT */
         #prompt {
             position: absolute;
             top: 18%;
@@ -81,21 +84,21 @@
             color: #000;
             font-weight: 800;
             font-size: 13px;
-            padding: 6px 16px;
+            padding: 8px 18px;
             border-radius: 20px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.2s;
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
             z-index: 10;
-            text-align: center;
             white-space: nowrap;
         }
 
-        /* MOBILE TOUCH CONTROLS */
+        /* TOUCH CONTROLS */
         .touch-container {
             position: absolute;
             bottom: 20px;
+            left: 0;
             width: 100%;
             padding: 0 20px;
             display: flex;
@@ -105,110 +108,105 @@
             z-index: 20;
         }
         
-        /* Joystick */
         #joystick-area {
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.12);
+            width: 130px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             position: relative;
             pointer-events: auto;
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(4px);
         }
         #joystick-stick {
-            width: 48px;
-            height: 48px;
-            background: rgba(245, 158, 11, 0.85);
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #fbbf24 0%, #d97706 100%);
             border: 2px solid #fff;
             border-radius: 50%;
             position: absolute;
-            top: 34px;
-            left: 34px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            top: 38px;
+            left: 38px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
 
-        /* Action Buttons Grid */
         .btn-group {
             display: grid;
-            grid-template-columns: repeat(2, 60px);
-            gap: 12px;
+            grid-template-columns: repeat(2, 62px);
+            gap: 10px;
             pointer-events: auto;
         }
         .btn-action {
-            width: 60px;
-            height: 60px;
+            width: 62px;
+            height: 62px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
             font-weight: 900;
-            font-size: 12px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            active: scale(0.92);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
         .btn-action:active {
-            background: rgba(255, 255, 255, 0.45);
-            transform: scale(0.92);
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.4);
         }
-        .btn-enter { background: rgba(245, 158, 11, 0.5); border-color: #f59e0b; }
-        .btn-gas { background: rgba(16, 185, 129, 0.5); border-color: #10b981; grid-column: span 2; width: 132px; border-radius: 30px; }
-        .btn-brake { background: rgba(239, 68, 68, 0.5); border-color: #ef4444; }
-        .btn-honk { background: rgba(59, 130, 246, 0.5); border-color: #3b82f6; }
+        .btn-enter { background: rgba(245, 158, 11, 0.6); border-color: #f59e0b; }
+        .btn-gas { background: rgba(16, 185, 129, 0.6); border-color: #10b981; grid-column: span 2; width: 134px; border-radius: 30px; }
+        .btn-brake { background: rgba(239, 68, 68, 0.6); border-color: #ef4444; }
+        .btn-honk { background: rgba(59, 130, 246, 0.6); border-color: #3b82f6; }
 
-        /* Health bar */
-        .hp-bar-bg {
-            width: 100px;
-            height: 8px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-            margin-top: 4px;
-            overflow: hidden;
-        }
-        .hp-bar-fill {
-            width: 100%;
-            height: 100%;
-            background: #10b981;
-            transition: width 0.2s;
+        /* CAMERA SWITCH BUTTON */
+        #btn-cam {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="webgl-container"></div>
 
     <!-- HUD -->
     <div id="hud">
         <div class="hud-card">
             <div class="hud-title">📍 台北 西門町</div>
-            <div class="hud-val" id="money-display">$NT 1,680</div>
-            <div class="hp-bar-bg">
-                <div class="hp-bar-fill" id="hp-fill"></div>
-            </div>
+            <div class="hud-val" id="money-display">$NT 3,200</div>
         </div>
 
         <div class="hud-card" style="text-align: right;">
-            <div class="hud-title">通緝指數 WANTED</div>
+            <div class="hud-title">WANTED</div>
             <div class="stars" id="star-rating">★ ★ ★ ★ ★</div>
-            <div class="hud-val" id="speed-display" style="font-size: 14px; margin-top:2px; color:#cbd5e1;">徒步中 0 KM/H</div>
+            <div id="speed-display" style="font-size: 12px; margin-top:2px; color:#cbd5e1; font-weight: bold;">徒步中 0 KM/H</div>
         </div>
     </div>
 
-    <!-- PROMPT -->
-    <div id="prompt">點擊 [F] / [乘車] 上下車</div>
+    <button id="btn-cam">📷 視角</button>
+    <div id="prompt">按下 [乘車] 開車/騎車</div>
 
-    <!-- TOUCH CONTROLS -->
+    <!-- CONTROLS -->
     <div class="touch-container">
-        <!-- Virtual Joystick -->
         <div id="joystick-area">
             <div id="joystick-stick"></div>
         </div>
 
-        <!-- Right Side Action Buttons -->
         <div class="btn-group">
             <button class="btn-action btn-honk" id="btn-honk">喇叭</button>
             <button class="btn-action btn-enter" id="btn-enter">乘車</button>
@@ -218,13 +216,9 @@
     </div>
 
     <script>
-        // ==================== WEB AUDIO ENGINE (No External Assets) ====================
         class SoundFX {
             constructor() {
                 this.ctx = null;
-                this.engineOsc = null;
-                this.engineGain = null;
-                this.isEngineRunning = false;
             }
             init() {
                 if (!this.ctx) {
@@ -241,28 +235,13 @@
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(420, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
                 gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start();
-                osc.stop(this.ctx.currentTime + 0.35);
-            }
-            playCrash() {
-                this.init();
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.2);
+                osc.stop(this.ctx.currentTime + 0.3);
             }
             playSiren() {
                 this.init();
@@ -271,236 +250,287 @@
                 const gain = this.ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-                osc.frequency.linearRampToValueAtTime(900, this.ctx.currentTime + 0.25);
+                osc.frequency.linearRampToValueAtTime(1000, this.ctx.currentTime + 0.2);
                 gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start();
-                osc.stop(this.ctx.currentTime + 0.25);
+                osc.stop(this.ctx.currentTime + 0.2);
             }
         }
         const sound = new SoundFX();
 
-        // ==================== GAME SETUP & CONSTANTS ====================
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Taiwan sky blue
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.008);
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
+        dirLight.position.set(100, 150, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 300;
+        const d = 100;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        function createSignTexture(text, bgColor, textColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+            return new THREE.CanvasTexture(canvas);
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
 
-        const WORLD_SIZE = 2400;
-        const ROAD_WIDTH = 220;
+        const signTextures = [
+            createSignTexture("7-ELEVEN", "#008054", "#ffffff"),
+            createSignTexture("全家 FamilyMart", "#00a0e9", "#ffffff"),
+            createSignTexture("阿龍檳榔攤", "#16a34a", "#fef08a"),
+            createSignTexture("豪大大雞排", "#ea580c", "#ffffff"),
+            createSignTexture("50嵐 珍珠奶茶", "#eab308", "#000000"),
+            createSignTexture("正宗牛肉麵", "#dc2626", "#ffffff")
+        ];
 
-        // Input States
-        const keys = { w: false, s: false, a: false, d: false, space: false };
-        let joystick = { active: false, x: 0, y: 0 };
-        let touchGas = false;
-        let touchBrake = false;
+        const WORLD_SIZE = 400;
+        
+        // Ground Asphalt
+        const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
 
-        // Game World Entities
-        let player = {
-            x: 1200, y: 1200,
-            angle: 0,
-            speed: 0,
-            maxSpeed: 3.2,
-            radius: 14,
-            hp: 100,
-            inVehicle: null
-        };
+        // Buildings Group
+        const buildings = [];
+        const buildingGroup = new THREE.Group();
 
-        let vehicles = [];
-        let pedestrians = [];
-        let buildings = [];
-        let wantedLevel = 0;
-        let money = 2800;
+        function buildCity() {
+            const grid = 80;
+            let texIdx = 0;
 
-        // ==================== MAP & BUILDING GENERATION ====================
-        function generateMap() {
-            buildings = [];
-            const blockNames = [
-                { name: "7-ELEVEN", color: "#008054", txt: "#ffffff" },
-                { name: "全家 FamilyMart", color: "#00a0e9", txt: "#ffffff" },
-                { name: "阿龍檳榔攤", color: "#16a34a", txt: "#ffffff" },
-                { name: "正宗台灣牛肉麵", color: "#dc2626", txt: "#ffffff" },
-                { name: "珍珠奶茶 50嵐", color: "#eab308", txt: "#000000" },
-                { name: "豪大大雞排", color: "#ea580c", txt: "#ffffff" },
-                { name: "熱炒 100", color: "#9333ea", txt: "#ffffff" },
-                { name: "永和豆漿大王", color: "#b91c1c", txt: "#ffffff" },
-                { name: "機車行 / 修車", color: "#475569", txt: "#ffffff" },
-                { name: "台北診所", color: "#0284c7", txt: "#ffffff" }
-            ];
+            for (let x = -WORLD_SIZE/2 + 40; x < WORLD_SIZE/2 - 40; x += grid) {
+                for (let z = -WORLD_SIZE/2 + 40; z < WORLD_SIZE/2 - 40; z += grid) {
+                    if (Math.abs(x) < 20 && Math.abs(z) < 20) continue; // Center spawn clear
 
-            let bIdx = 0;
-            const gridStep = 600;
+                    const h = 25 + Math.random() * 35;
+                    const w = 45;
+                    const d = 45;
 
-            for (let x = 200; x < WORLD_SIZE - 200; x += gridStep) {
-                for (let y = 200; y < WORLD_SIZE - 200; y += gridStep) {
-                    const info = blockNames[bIdx % blockNames.length];
-                    bIdx++;
+                    const bGeo = new THREE.BoxGeometry(w, h, d);
+                    const bMat = new THREE.MeshStandardMaterial({ color: 0x8899a6, roughness: 0.5 });
+                    const building = new THREE.Mesh(bGeo, bMat);
+                    building.position.set(x, h/2, z);
+                    building.castShadow = true;
+                    building.receiveShadow = true;
 
-                    buildings.push({
-                        x: x, y: y,
-                        w: 360, h: 360,
-                        name: info.name,
-                        color: info.color,
-                        txtColor: info.txt
-                    });
+                    // Add Taiwanese Signboard
+                    const signTex = signTextures[texIdx % signTextures.length];
+                    texIdx++;
+                    const signGeo = new THREE.PlaneGeometry(24, 6);
+                    const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide });
+                    const sign = new THREE.Mesh(signGeo, signMat);
+                    sign.position.set(0, -h/2 + 6, d/2 + 0.2);
+                    building.add(sign);
+
+                    buildingGroup.add(building);
+                    buildings.push({ mesh: building, box: new THREE.Box3().setFromObject(building) });
                 }
             }
+            scene.add(buildingGroup);
         }
+        buildCity();
 
-        // ==================== VEHICLE & PEDESTRIAN SPAWNING ====================
-        function spawnEntities() {
-            vehicles = [];
-            pedestrians = [];
+        // Player Mesh (Low Poly Human)
+        const playerGroup = new THREE.Group();
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.8, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.9;
+        body.castShadow = true;
+        playerGroup.add(body);
 
-            // Vehicles: Taxis, Scooters, Police
-            const vehicleTypes = [
-                { type: 'taxi', name: '小黃計程車', color: '#facc15', w: 32, h: 58, maxSpeed: 6.5, accel: 0.15, turn: 0.05 },
-                { type: 'scooter', name: '勁戰機車', color: '#2563eb', w: 18, h: 38, maxSpeed: 7.0, accel: 0.22, turn: 0.08 },
-                { type: 'police', name: '警車', color: '#1e293b', w: 32, h: 60, maxSpeed: 7.5, accel: 0.18, turn: 0.05, isPolice: true },
-                { type: 'car', name: '私家車', color: '#e2e8f0', w: 32, h: 56, maxSpeed: 5.8, accel: 0.12, turn: 0.04 }
-            ];
+        const headGeo = new THREE.SphereGeometry(0.4, 8, 8);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xfde047 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.0;
+        playerGroup.add(head);
 
-            // Spawn static & wandering vehicles on roads
-            for (let i = 0; i < 22; i++) {
-                const t = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
-                vehicles.push({
-                    id: i,
-                    type: t.type,
-                    name: t.name,
-                    color: t.color,
-                    x: 100 + Math.random() * (WORLD_SIZE - 200),
-                    y: 100 + Math.random() * (WORLD_SIZE - 200),
-                    w: t.w, h: t.h,
-                    angle: Math.floor(Math.random() * 4) * (Math.PI / 2),
-                    speed: 0,
-                    maxSpeed: t.maxSpeed,
-                    accel: t.accel,
-                    turn: t.turn,
-                    isPolice: t.isPolice || false
-                });
-            }
+        scene.add(playerGroup);
+        playerGroup.position.set(0, 0, 0);
 
-            // Spawn Pedestrians
-            for (let i = 0; i < 40; i++) {
-                pedestrians.push({
-                    x: Math.random() * WORLD_SIZE,
-                    y: Math.random() * WORLD_SIZE,
-                    angle: Math.random() * Math.PI * 2,
-                    speed: 0.8 + Math.random() * 0.8,
-                    alive: true
-                });
-            }
-        }
+        // Vehicles Array
+        const vehicles = [];
 
-        // ==================== TOUCH & KEYBOARD LISTENERS ====================
-        function setupInputs() {
-            // Keyboard
-            window.addEventListener('keydown', e => {
-                sound.init();
-                const k = e.key.toLowerCase();
-                if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
-                if (k === 's' || e.key === 'ArrowDown') keys.s = true;
-                if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
-                if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
-                if (e.code === 'Space') keys.space = true;
-                if (k === 'f') toggleVehicleEnterExit();
-            });
+        function createVehicle(type, color, x, z) {
+            const group = new THREE.Group();
+            let w = 2.2, h = 1.6, l = 4.5;
+            let isScooter = (type === 'scooter');
 
-            window.addEventListener('keyup', e => {
-                const k = e.key.toLowerCase();
-                if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
-                if (k === 's' || e.key === 'ArrowDown') keys.s = false;
-                if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
-                if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
-                if (e.code === 'Space') keys.space = false;
-            });
-
-            // Virtual Joystick Touch
-            const joyArea = document.getElementById('joystick-area');
-            const joyStick = document.getElementById('joystick-stick');
-
-            let joyStartX = 0, joyStartY = 0;
-
-            joyArea.addEventListener('touchstart', e => {
-                sound.init();
-                e.preventDefault();
-                const t = e.touches[0];
-                const rect = joyArea.getBoundingClientRect();
-                joyStartX = rect.left + rect.width / 2;
-                joyStartY = rect.top + rect.height / 2;
-                joystick.active = true;
-            });
-
-            window.addEventListener('touchmove', e => {
-                if (!joystick.active) return;
-                const t = e.touches[0];
-                const dx = t.clientX - joyStartX;
-                const dy = t.clientY - joyStartY;
-                const dist = Math.min(Math.hypot(dx, dy), 40);
-                const angle = Math.atan2(dy, dx);
-
-                const mx = Math.cos(angle) * dist;
-                const my = Math.sin(angle) * dist;
-
-                joyStick.style.transform = `translate(${mx}px, ${my}px)`;
-
-                joystick.x = mx / 40; // -1 to 1
-                joystick.y = my / 40; // -1 to 1
-            });
-
-            const resetJoystick = () => {
-                joystick.active = false;
-                joystick.x = 0;
-                joystick.y = 0;
-                joyStick.style.transform = 'translate(0px, 0px)';
-            };
-
-            window.addEventListener('touchend', resetJoystick);
-            window.addEventListener('touchcancel', resetJoystick);
-
-            // Action Buttons
-            document.getElementById('btn-enter').addEventListener('touchstart', e => {
-                e.preventDefault();
-                sound.init();
-                toggleVehicleEnterExit();
-            });
-
-            document.getElementById('btn-honk').addEventListener('touchstart', e => {
-                e.preventDefault();
-                sound.playHonk();
-            });
-
-            const gasBtn = document.getElementById('btn-gas');
-            gasBtn.addEventListener('touchstart', e => { e.preventDefault(); touchGas = true; });
-            gasBtn.addEventListener('touchend', e => { e.preventDefault(); touchGas = false; });
-
-            const brakeBtn = document.getElementById('btn-brake');
-            brakeBtn.addEventListener('touchstart', e => { e.preventDefault(); touchBrake = true; });
-            brakeBtn.addEventListener('touchend', e => { e.preventDefault(); touchBrake = false; });
-        }
-
-        // ==================== VEHICLE ENTER / EXIT ====================
-        function toggleVehicleEnterExit() {
-            if (player.inVehicle) {
-                // Exit Vehicle
-                const v = player.inVehicle;
-                player.x = v.x + Math.cos(v.angle + Math.PI / 2) * (v.w + 15);
-                player.y = v.y + Math.sin(v.angle + Math.PI / 2) * (v.w + 15);
-                player.inVehicle = null;
+            if (isScooter) {
+                w = 1.0; h = 1.2; l = 2.0;
+                // Scooter Body
+                const sGeo = new THREE.BoxGeometry(w, h, l);
+                const sMat = new THREE.MeshStandardMaterial({ color: color });
+                const sMesh = new THREE.Mesh(sGeo, sMat);
+                sMesh.position.y = h/2;
+                sMesh.castShadow = true;
+                group.add(sMesh);
             } else {
-                // Find Near Vehicle
+                // Car Body
+                const cGeo = new THREE.BoxGeometry(w, h, l);
+                const cMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.3 });
+                const cMesh = new THREE.Mesh(cGeo, cMat);
+                cMesh.position.y = h/2 + 0.3;
+                cMesh.castShadow = true;
+                group.add(cMesh);
+
+                // Roof / Cabin
+                const rGeo = new THREE.BoxGeometry(w - 0.2, h - 0.4, l - 1.8);
+                const rMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+                const rMesh = new THREE.Mesh(rGeo, rMat);
+                rMesh.position.y = h + 0.2;
+                group.add(rMesh);
+
+                // Police Siren
+                if (type === 'police') {
+                    const sirenGeo = new THREE.BoxGeometry(1.2, 0.3, 0.4);
+                    const sirenMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                    const siren = new THREE.Mesh(sirenGeo, sirenMat);
+                    siren.position.y = h + 0.8;
+                    group.add(siren);
+                }
+            }
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+
+            const vObj = {
+                mesh: group,
+                type: type,
+                speed: 0,
+                maxSpeed: isScooter ? 0.7 : 0.9,
+                accel: isScooter ? 0.03 : 0.02,
+                turnSpeed: isScooter ? 0.05 : 0.035,
+                angle: Math.random() * Math.PI * 2,
+                radius: isScooter ? 1.2 : 2.5
+            };
+            vehicles.push(vObj);
+            return vObj;
+        }
+
+        // Spawn Taiwan Vehicles (Yellow Taxis, Scooters, Police)
+        createVehicle('taxi', 0xfacc15, 10, 10);
+        createVehicle('taxi', 0xfacc15, -20, 15);
+        createVehicle('scooter', 0x2563eb, 5, -10);
+        createVehicle('scooter', 0xdc2626, -10, -15);
+        createVehicle('police', 0x1e293b, 25, -30);
+
+        const keys = { w: false, s: false, a: false, d: false };
+        let joystick = { active: false, x: 0, y: 0 };
+        let touchGas = false, touchBrake = false;
+
+        const joyArea = document.getElementById('joystick-area');
+        const joyStick = document.getElementById('joystick-stick');
+        let joyStartX = 0, joyStartY = 0;
+
+        joyArea.addEventListener('touchstart', e => {
+            sound.init();
+            e.preventDefault();
+            const t = e.touches[0];
+            const rect = joyArea.getBoundingClientRect();
+            joyStartX = rect.left + rect.width / 2;
+            joyStartY = rect.top + rect.height / 2;
+            joystick.active = true;
+        });
+
+        window.addEventListener('touchmove', e => {
+            if (!joystick.active) return;
+            const t = e.touches[0];
+            const dx = t.clientX - joyStartX;
+            const dy = t.clientY - joyStartY;
+            const dist = Math.min(Math.hypot(dx, dy), 40);
+            const angle = Math.atan2(dy, dx);
+
+            joyStick.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+            joystick.x = (Math.cos(angle) * dist) / 40;
+            joystick.y = (Math.sin(angle) * dist) / 40;
+        });
+
+        const resetJoy = () => {
+            joystick.active = false;
+            joystick.x = 0; joystick.y = 0;
+            joyStick.style.transform = 'translate(0px,0px)';
+        };
+        window.addEventListener('touchend', resetJoy);
+
+        // Buttons
+        document.getElementById('btn-gas').addEventListener('touchstart', e => { e.preventDefault(); touchGas = true; });
+        document.getElementById('btn-gas').addEventListener('touchend', e => { e.preventDefault(); touchGas = false; });
+        document.getElementById('btn-brake').addEventListener('touchstart', e => { e.preventDefault(); touchBrake = true; });
+        document.getElementById('btn-brake').addEventListener('touchend', e => { e.preventDefault(); touchBrake = false; });
+        document.getElementById('btn-honk').addEventListener('touchstart', e => { e.preventDefault(); sound.playHonk(); });
+        document.getElementById('btn-enter').addEventListener('touchstart', e => { e.preventDefault(); toggleEnterVehicle(); });
+
+        // Keyboard support
+        window.addEventListener('keydown', e => {
+            sound.init();
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = true;
+            if (k === 's') keys.s = true;
+            if (k === 'a') keys.a = true;
+            if (k === 'd') keys.d = true;
+            if (k === 'f') toggleEnterVehicle();
+        });
+        window.addEventListener('keyup', e => {
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = false;
+            if (k === 's') keys.s = false;
+            if (k === 'a') keys.a = false;
+            if (k === 'd') keys.d = false;
+        });
+
+        let currentVehicle = null;
+
+        function toggleEnterVehicle() {
+            if (currentVehicle) {
+                // Exit
+                playerGroup.position.set(currentVehicle.mesh.position.x + 3, 0, currentVehicle.mesh.position.z);
+                playerGroup.visible = true;
+                currentVehicle = null;
+            } else {
+                // Enter
                 let closest = null;
-                let minDist = 60;
+                let minDist = 5.0;
 
                 vehicles.forEach(v => {
-                    const dist = Math.hypot(player.x - v.x, player.y - v.y);
+                    const dist = playerGroup.position.distanceTo(v.mesh.position);
                     if (dist < minDist) {
                         minDist = dist;
                         closest = v;
@@ -508,267 +538,108 @@
                 });
 
                 if (closest) {
-                    player.inVehicle = closest;
+                    currentVehicle = closest;
+                    playerGroup.visible = false;
                 }
             }
         }
 
-        // ==================== GAME LOGIC & PHYSICS UPDATE ====================
+        let cameraMode = 0; // 0 = Third person, 1 = High angle
+        document.getElementById('btn-cam').addEventListener('click', () => {
+            cameraMode = (cameraMode + 1) % 2;
+        });
+
         function update() {
-            if (player.inVehicle) {
-                // Driving Physics
-                const v = player.inVehicle;
+            if (currentVehicle) {
+                // Driving Logic
+                const v = currentVehicle;
 
-                let accelInput = 0;
-                let turnInput = 0;
-
-                if (keys.w || touchGas) accelInput += 1;
-                if (keys.s || touchBrake) accelInput -= 0.5;
-                if (keys.a) turnInput -= 1;
-                if (keys.d) turnInput += 1;
+                let gas = (keys.w || touchGas) ? 1 : ((keys.s || touchBrake) ? -0.5 : 0);
+                let turn = (keys.a ? -1 : 0) + (keys.d ? 1 : 0);
 
                 if (joystick.active) {
-                    turnInput = joystick.x;
-                    if (joystick.y < -0.2) accelInput = -joystick.y;
-                    if (joystick.y > 0.3) accelInput = -joystick.y * 0.5;
+                    turn = joystick.x;
+                    if (joystick.y < -0.2) gas = -joystick.y;
+                    if (joystick.y > 0.3) gas = -joystick.y * 0.5;
                 }
 
-                // Acceleration
-                if (accelInput > 0) {
-                    v.speed = Math.min(v.speed + v.accel, v.maxSpeed);
-                } else if (accelInput < 0) {
-                    v.speed = Math.max(v.speed - v.accel, -v.maxSpeed * 0.4);
-                } else {
-                    v.speed *= 0.96; // Friction
+                if (gas > 0) v.speed = Math.min(v.speed + v.accel, v.maxSpeed);
+                else if (gas < 0) v.speed = Math.max(v.speed - v.accel, -v.maxSpeed * 0.4);
+                else v.speed *= 0.96;
+
+                if (Math.abs(v.speed) > 0.05) {
+                    v.angle -= turn * v.turnSpeed * (v.speed > 0 ? 1 : -1);
                 }
 
-                // Steering
-                if (Math.abs(v.speed) > 0.2) {
-                    const dir = v.speed > 0 ? 1 : -1;
-                    v.angle += turnInput * v.turn * dir;
-                }
-
-                // Movement
-                v.x += Math.cos(v.angle - Math.PI / 2) * v.speed;
-                v.y += Math.sin(v.angle - Math.PI / 2) * v.speed;
+                v.mesh.rotation.y = v.angle;
+                v.mesh.position.x += Math.sin(v.angle) * v.speed;
+                v.mesh.position.z += Math.cos(v.angle) * v.speed;
 
                 // Sync Player Position
-                player.x = v.x;
-                player.y = v.y;
-                player.angle = v.angle;
+                playerGroup.position.copy(v.mesh.position);
 
-                // Collisions with Buildings
-                buildings.forEach(b => {
-                    if (v.x > b.x && v.x < b.x + b.w && v.y > b.y && v.y < b.y + b.h) {
-                        v.speed = -v.speed * 0.5;
-                        sound.playCrash();
-                    }
-                });
+                // Camera follow vehicle
+                const camOffset = cameraMode === 0 ? new THREE.Vector3(0, 8, -14) : new THREE.Vector3(0, 25, -2);
+                const targetCamPos = v.mesh.position.clone().add(camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), v.angle));
+                camera.position.lerp(targetCamPos, 0.1);
+                camera.lookAt(v.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)));
 
-                // Hit Pedestrians
-                pedestrians.forEach(p => {
-                    if (p.alive && Math.hypot(v.x - p.x, v.y - p.y) < v.w) {
-                        p.alive = false;
-                        wantedLevel = Math.min(wantedLevel + 1, 5);
-                        money += 200;
-                        sound.playCrash();
-                    }
-                });
+                document.getElementById('speed-display').innerText = `駕駛中 ${Math.round(Math.abs(v.speed) * 120)} KM/H`;
 
             } else {
-                // Foot Movement
-                let dx = 0, dy = 0;
-
-                if (keys.w) dy -= 1;
-                if (keys.s) dy += 1;
-                if (keys.a) dx -= 1;
-                if (keys.d) dx += 1;
+                // Walking Logic
+                let mx = (keys.a ? -1 : 0) + (keys.d ? 1 : 0);
+                let mz = (keys.w ? -1 : 0) + (keys.s ? 1 : 0);
 
                 if (joystick.active) {
-                    dx = joystick.x;
-                    dy = joystick.y;
+                    mx = joystick.x;
+                    mz = joystick.y;
                 }
 
-                if (dx !== 0 || dy !== 0) {
-                    const len = Math.hypot(dx, dy);
-                    dx /= len;
-                    dy /= len;
-
-                    player.x += dx * player.maxSpeed;
-                    player.y += dy * player.maxSpeed;
-                    player.angle = Math.atan2(dy, dx) + Math.PI / 2;
+                if (Math.abs(mx) > 0.1 || Math.abs(mz) > 0.1) {
+                    const moveAngle = Math.atan2(mx, mz);
+                    playerGroup.rotation.y = moveAngle;
+                    playerGroup.position.x += Math.sin(moveAngle) * 0.25;
+                    playerGroup.position.z += Math.cos(moveAngle) * 0.25;
                 }
+
+                // Camera follow player
+                const targetCamPos = playerGroup.position.clone().add(cameraMode === 0 ? new THREE.Vector3(0, 10, 15) : new THREE.Vector3(0, 30, 1));
+                camera.position.lerp(targetCamPos, 0.1);
+                camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 1, 0)));
+
+                document.getElementById('speed-display').innerText = `徒步中`;
             }
 
-            // Keep Player inside World bounds
-            player.x = Math.max(50, Math.min(WORLD_SIZE - 50, player.x));
-            player.y = Math.max(50, Math.min(WORLD_SIZE - 50, player.y));
-
-            // Police AI logic when wanted
-            if (wantedLevel > 0) {
-                vehicles.filter(v => v.isPolice).forEach(pCar => {
-                    const dist = Math.hypot(player.x - pCar.x, player.y - pCar.y);
-                    if (dist < 600) {
-                        const targetAngle = Math.atan2(player.y - pCar.y, player.x - pCar.x) + Math.PI / 2;
-                        pCar.angle += (targetAngle - pCar.angle) * 0.05;
-                        pCar.speed = 4.5;
-                        pCar.x += Math.cos(pCar.angle - Math.PI / 2) * pCar.speed;
-                        pCar.y += Math.sin(pCar.angle - Math.PI / 2) * pCar.speed;
-
-                        if (Math.random() < 0.03) sound.playSiren();
-                    }
-                });
-            }
-
-            // Update HUD
-            updateHUD();
-        }
-
-        function updateHUD() {
-            document.getElementById('money-display').innerText = `$NT ${money.toLocaleString()}`;
-            document.getElementById('hp-fill').style.width = `${player.hp}%`;
-
-            // Stars
-            let starsStr = '';
-            for (let i = 1; i <= 5; i++) {
-                starsStr += `<span class="${i <= wantedLevel ? 'star-active' : ''}">★</span> `;
-            }
-            document.getElementById('star-rating').innerHTML = starsStr;
-
-            // Speed display
-            const speedKm = player.inVehicle ? Math.round(Math.abs(player.inVehicle.speed) * 16) : Math.round(player.speed * 10);
-            const vehName = player.inVehicle ? player.inVehicle.name : '徒步中';
-            document.getElementById('speed-display').innerText = `${vehName} ${speedKm} KM/H`;
-
-            // Interaction Prompt
+            // UI Prompt
             const prompt = document.getElementById('prompt');
-            if (player.inVehicle) {
+            if (currentVehicle) {
                 prompt.style.opacity = '1';
                 prompt.innerText = '按 [乘車] 下車';
             } else {
-                let nearVeh = false;
+                let near = false;
                 vehicles.forEach(v => {
-                    if (Math.hypot(player.x - v.x, player.y - v.y) < 50) nearVeh = true;
+                    if (playerGroup.position.distanceTo(v.mesh.position) < 4.0) near = true;
                 });
-                prompt.style.opacity = nearVeh ? '1' : '0';
-                prompt.innerText = '按 [乘車] 駕駛載具';
+                prompt.style.opacity = near ? '1' : '0';
+                prompt.innerText = '按 [乘車] 開車/騎車';
             }
         }
 
-        // ==================== RENDERING / GRAPHICS ====================
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-            ctx.save();
-            // Camera follow player
-            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
-
-            // 1. Draw World Ground (Asphalt & Roads)
-            ctx.fillStyle = '#262626';
-            ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
-
-            // 2. Draw "機車優先" Scooter Lanes & Crosswalk Markings
-            ctx.fillStyle = '#1e3a8a'; // Blue Scooter priority lane
-            ctx.fillRect(180, 0, 40, WORLD_SIZE);
-            ctx.fillRect(0, 180, WORLD_SIZE, 40);
-
-            // Lane Text "機車優先"
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText("機 車", 185, 400);
-            ctx.fillText("優 先", 185, 430);
-
-            // 3. Draw Buildings & Taiwan Signboards
-            buildings.forEach(b => {
-                // Sidewalk border
-                ctx.fillStyle = '#64748b';
-                ctx.fillRect(b.x - 12, b.y - 12, b.w + 24, b.h + 24);
-
-                // Main Roof
-                ctx.fillStyle = '#334155';
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-
-                // Neon Signboard on storefront
-                ctx.fillStyle = b.color;
-                ctx.fillRect(b.x + 20, b.y + b.h - 10, b.w - 40, 20);
-
-                ctx.fillStyle = b.txtColor;
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(b.name, b.x + b.w / 2, b.y + b.h + 5);
-                ctx.textAlign = 'left';
-            });
-
-            // 4. Draw Pedestrians
-            pedestrians.forEach(p => {
-                if (!p.alive) return;
-                ctx.fillStyle = '#f87171';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // 5. Draw Vehicles
-            vehicles.forEach(v => {
-                ctx.save();
-                ctx.translate(v.x, v.y);
-                ctx.rotate(v.angle);
-
-                // Vehicle Chassis
-                ctx.fillStyle = v.color;
-                ctx.fillRect(-v.w / 2, -v.h / 2, v.w, v.h);
-
-                // Windshield
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(-v.w / 2 + 3, -v.h / 4, v.w - 6, v.h / 3);
-
-                // Police Sirens
-                if (v.isPolice) {
-                    const flash = Math.floor(Date.now() / 150) % 2 === 0;
-                    ctx.fillStyle = flash ? '#ef4444' : '#3b82f6';
-                    ctx.fillRect(-v.w / 4, -2, v.w / 2, 6);
-                }
-
-                ctx.restore();
-            });
-
-            // 6. Draw Player (if on foot)
-            if (!player.inVehicle) {
-                ctx.save();
-                ctx.translate(player.x, player.y);
-                ctx.rotate(player.angle);
-
-                // Hands / Shoulders
-                ctx.fillStyle = '#0284c7';
-                ctx.beginPath();
-                ctx.arc(-8, 2, 5, 0, Math.PI * 2);
-                ctx.arc(8, 2, 5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Head
-                ctx.fillStyle = '#fbcfe8';
-                ctx.beginPath();
-                ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-            }
-
-            ctx.restore();
-        }
-
-        // ==================== MAIN LOOP ====================
-        function loop() {
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
             update();
-            render();
-            requestAnimationFrame(loop);
+            renderer.render(scene, camera);
         }
-
-        // Start Game
-        generateMap();
-        spawnEntities();
-        setupInputs();
-        loop();
+        animate();
     </script>
 </body>
 </html>
